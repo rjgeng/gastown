@@ -33,12 +33,13 @@ const (
 
 // WispReaperConfig holds configuration for the wisp_reaper patrol.
 type WispReaperConfig struct {
-	Enabled      bool     `json:"enabled"`
-	DryRun       bool     `json:"dry_run,omitempty"`
-	IntervalStr  string   `json:"interval,omitempty"`
-	MaxAgeStr    string   `json:"max_age,omitempty"`
-	DeleteAgeStr string   `json:"delete_age,omitempty"`
-	Databases    []string `json:"databases,omitempty"`
+	Enabled        bool     `json:"enabled"`
+	DryRun         bool     `json:"dry_run,omitempty"`
+	IntervalStr    string   `json:"interval,omitempty"`
+	MaxAgeStr      string   `json:"max_age,omitempty"`
+	DeleteAgeStr   string   `json:"delete_age,omitempty"`
+	AlertThreshold int      `json:"alert_threshold,omitempty"`
+	Databases      []string `json:"databases,omitempty"`
 }
 
 // wispReaperInterval returns the configured interval, or the default (1h).
@@ -63,6 +64,16 @@ func wispReaperMaxAge(config *DaemonPatrolConfig) time.Duration {
 		}
 	}
 	return defaultWispMaxAge
+}
+
+// wispAlertThresholdVal returns the configured alert threshold, or the default (500).
+func wispAlertThresholdVal(config *DaemonPatrolConfig) int {
+	if config != nil && config.Patrols != nil && config.Patrols.WispReaper != nil {
+		if config.Patrols.WispReaper.AlertThreshold > 0 {
+			return config.Patrols.WispReaper.AlertThreshold
+		}
+	}
+	return wispAlertThreshold
 }
 
 // wispDeleteAge returns the configured delete age, or the default (7 days).
@@ -95,7 +106,7 @@ func (d *Daemon) reapWisps() {
 		"purge_age":       deleteAge.String(),
 		"stale_issue_age": defaultStaleIssueAge.String(),
 		"mail_delete_age": defaultMailDeleteAge.String(),
-		"alert_threshold": fmt.Sprintf("%d", wispAlertThreshold),
+		"alert_threshold": fmt.Sprintf("%d", wispAlertThresholdVal(d.patrolConfig)),
 		"dolt_port":       fmt.Sprintf("%d", d.doltServerPort()),
 	}
 
@@ -321,9 +332,10 @@ func (d *Daemon) reapWispsInline(config *WispReaperConfig, maxAge, deleteAge tim
 	}
 
 	// Step 5: Report
-	if totalOpen > wispAlertThreshold {
+	alertThreshold := wispAlertThresholdVal(d.patrolConfig)
+	if totalOpen > alertThreshold {
 		d.logger.Printf("wisp_reaper: WARNING: %d open wisps exceed threshold %d — investigate wisp lifecycle",
-			totalOpen, wispAlertThreshold)
+			totalOpen, alertThreshold)
 	}
 	d.logger.Printf("wisp_reaper: cycle complete — reaped=%d purged=%d mail_purged=%d plugin_closed=%d dispatch_closed=%d auto_closed=%d open=%d databases=%d dryRun=%v",
 		totalReaped, totalPurged, totalMailPurged, totalPluginClosed, totalDispatchClosed, totalAutoClosed, totalOpen, len(databases), dryRun)
