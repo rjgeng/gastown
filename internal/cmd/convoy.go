@@ -486,17 +486,13 @@ func runBdJSONWithOptions(dir string, allowStale bool, args ...string) ([]byte, 
 //
 // Returns deduplicated, unwrapped issue IDs (external:prefix:id → id).
 func bdDepListRawIDs(dir, issueID, direction, depType string) ([]string, error) {
-	// Determine query columns based on direction.
-	// "down": issueID depends on targets → SELECT depends_on_id WHERE issue_id = ?
-	// "up":   issueID is depended on → SELECT issue_id WHERE depends_on_id = ?
-	var selectCol, whereCol string
-	if direction == "up" {
-		selectCol = "issue_id"
-		whereCol = "depends_on_id"
-	} else {
-		selectCol = "depends_on_id"
-		whereCol = "issue_id"
-	}
+	// Determine query based on direction.
+	// "down": issueID depends on targets → SELECT COALESCE(...) AS dep_target WHERE issue_id = ?
+	// "up":   issueID is depended on    → SELECT issue_id WHERE COALESCE(...) = ?
+	//
+	// depends_on_id was split into depends_on_issue_id / depends_on_wisp_id / depends_on_external
+	// in bd v1.0.5; use COALESCE for backward-compatible resolution.
+	const depTargetExpr = "COALESCE(depends_on_issue_id, depends_on_wisp_id, depends_on_external)"
 
 	// Build SQL query. Bead IDs are system-generated alphanumeric strings
 	// with hyphens and dots — validate to prevent injection.
@@ -504,7 +500,12 @@ func bdDepListRawIDs(dir, issueID, direction, depType string) ([]string, error) 
 		return nil, fmt.Errorf("invalid bead ID: %q", issueID)
 	}
 
-	query := fmt.Sprintf("SELECT %s FROM dependencies WHERE %s = '%s'", selectCol, whereCol, issueID)
+	var query string
+	if direction == "up" {
+		query = fmt.Sprintf("SELECT issue_id FROM dependencies WHERE %s = '%s'", depTargetExpr, issueID)
+	} else {
+		query = fmt.Sprintf("SELECT %s AS dep_target FROM dependencies WHERE issue_id = '%s'", depTargetExpr, issueID)
+	}
 	if depType != "" {
 		if !isValidBeadID(depType) {
 			return nil, fmt.Errorf("invalid dep type: %q", depType)
@@ -517,16 +518,21 @@ func bdDepListRawIDs(dir, issueID, direction, depType string) ([]string, error) 
 		return nil, fmt.Errorf("bd sql for deps of %s: %w", issueID, err)
 	}
 
-	// Parse JSON array of single-column rows
+	// Parse JSON array of single-column rows.
 	var rows []map[string]string
 	if err := json.Unmarshal(out, &rows); err != nil {
 		return nil, fmt.Errorf("parsing dep sql for %s: %w", issueID, err)
 	}
 
+	resultCol := "dep_target"
+	if direction == "up" {
+		resultCol = "issue_id"
+	}
+
 	seen := make(map[string]bool, len(rows))
 	var ids []string
 	for _, row := range rows {
-		rawID := row[selectCol]
+		rawID := row[resultCol]
 		id := beads.ExtractIssueID(rawID)
 		if id != "" && !seen[id] {
 			seen[id] = true
