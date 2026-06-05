@@ -2,11 +2,14 @@ package daemon
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/steveyegge/gastown/internal/constants"
+	"github.com/steveyegge/gastown/internal/doltserver"
 	"github.com/steveyegge/gastown/internal/reaper"
 	"github.com/steveyegge/gastown/internal/util"
 )
@@ -326,5 +329,12 @@ func (d *Daemon) doltServerPort() int {
 	if d.doltServer != nil {
 		return d.doltServer.config.Port
 	}
-	return 3307
+	// Fall back to GT_DOLT_PORT env so externally-managed servers on non-default
+	// ports don't get baked into molecule vars as 3307.
+	if p := os.Getenv("GT_DOLT_PORT"); p != "" {
+		if port, err := strconv.Atoi(p); err == nil && port > 0 {
+			return port
+		}
+	}
+	return doltserver.DefaultPort
 }
