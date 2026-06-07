@@ -1034,7 +1034,7 @@ func TestConvoyTracksBead_ExactMatch(t *testing.T) {
 
 	// bd sql returns rows with depends_on_id column
 	bdScript := `#!/bin/sh
-echo '[{"depends_on_id":"gt-aaa"},{"depends_on_id":"gt-bbb"}]'
+echo '[{"dep_target":"gt-aaa"},{"dep_target":"gt-bbb"}]'
 exit 0
 `
 	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(bdScript), 0755); err != nil {
@@ -1063,7 +1063,7 @@ func TestConvoyTracksBead_ExternalWrappedMatch(t *testing.T) {
 
 	// bd sql returns raw depends_on_id which may contain external: wrapping
 	bdScript := `#!/bin/sh
-echo '[{"depends_on_id":"external:gt:gt-abc"}]'
+echo '[{"dep_target":"external:gt:gt-abc"}]'
 exit 0
 `
 	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(bdScript), 0755); err != nil {
@@ -1086,7 +1086,7 @@ func TestConvoyTracksBead_NoMatch(t *testing.T) {
 	beadsDir := t.TempDir()
 
 	bdScript := `#!/bin/sh
-echo '[{"depends_on_id":"gt-aaa"}]'
+echo '[{"dep_target":"gt-aaa"}]'
 exit 0
 `
 	if err := os.WriteFile(filepath.Join(binDir, "bd"), []byte(bdScript), 0755); err != nil {
@@ -1542,7 +1542,7 @@ case "$cmd" in
     ;;
   sql)
     # bdDepListRawIDs down: return tracked bead IDs
-    echo '[{"depends_on_id":"gt-abc"}]'
+    echo '[{"dep_target":"gt-abc"}]'
     exit 0
     ;;
   dep)
@@ -1685,7 +1685,7 @@ shift || true
 case "$cmd" in
   sql)
     # bdDepListRawIDs down: return tracked bead IDs for convoy
-    echo '[{"depends_on_id":"gt-aaa"},{"depends_on_id":"gt-bbb"}]'
+    echo '[{"dep_target":"gt-aaa"},{"dep_target":"gt-bbb"}]'
     exit 0
     ;;
   show)

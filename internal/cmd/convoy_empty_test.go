@@ -188,7 +188,7 @@ case "$pos0" in
         echo '[]'
         ;;
       *"issue_id = 'hq-feed-mix'"*)
-        echo '[{"depends_on_id":"gt-ready1"}]'
+        echo '[{"dep_target":"gt-ready1"}]'
         ;;
       *)
         echo '[]'
@@ -324,7 +324,7 @@ case "$pos0" in
     ;;
   sql)
     # bdDepListRawIDs: return tracked bead IDs for hq-stuck1
-    echo '[{"depends_on_id":"gt-busy1"},{"depends_on_id":"gt-busy2"}]'
+    echo '[{"dep_target":"gt-busy1"},{"dep_target":"gt-busy2"}]'
     exit 0
     ;;
   dep)

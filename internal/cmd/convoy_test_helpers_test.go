@@ -567,12 +567,13 @@ func (d *testDAG) trackedBeadsJSONFor(convoyID string) string {
 	return string(raw)
 }
 
-// trackedBeadsSQLJSONFor returns the JSON array for `bd sql "SELECT depends_on_id
+// trackedBeadsSQLJSONFor returns the JSON array for `bd sql "SELECT
+// COALESCE(depends_on_issue_id, depends_on_wisp_id, depends_on_external) AS dep_target
 // FROM dependencies WHERE issue_id = '<convoyID>' AND type = 'tracks'" --json`.
-// Returns [{"depends_on_id":"<id>"},...] for each tracked bead.
+// Returns [{"dep_target":"<id>"},...] for each tracked bead.
 func (d *testDAG) trackedBeadsSQLJSONFor(convoyID string) string {
 	type sqlRow struct {
-		DependsOnID string `json:"depends_on_id"`
+		DependsOnID string `json:"dep_target"`
 	}
 
 	var out []sqlRow
